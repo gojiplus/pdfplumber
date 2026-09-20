@@ -1,4 +1,5 @@
 cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata from this file."
 title: pdfplumber
 type: software
 version: 0.11.10
@@ -6,7 +7,6 @@ date-released: "2026-06-14"
 authors:
   - family-names: "Singer-Vine"
     given-names: "Jeremy"
-    email: "jsvine@gmail.com"
   - name: "The pdfplumber contributors"
 repository-code: "https://github.com/jsvine/pdfplumber"
 url: "https://github.com/jsvine/pdfplumber"
