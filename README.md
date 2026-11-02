@@ -144,31 +144,6 @@ Each instance of `pdfplumber.PDF` and `pdfplumber.Page` provides access to sever
 
 Each object is represented as a simple Python `dict`, with the following properties:
 
-#### Coordinates
-
-Horizontal coordinates are unambiguous: `x0` and `x1` are both measured from the left edge of the page. Vertical coordinates come in two varieties, and mixing them is a common source of confusion:
-
-| Property | Measured from | Direction |
-|----------|---------------|-----------|
-|`y0`, `y1`| Bottom of the page | Upward |
-|`top`, `bottom`| Top of the page | Downward |
-|`doctop`| Top of the *document* | Downward |
-
-The `y0`/`y1` pair follows the PDF specification's own coordinate system, and is retained for compatibility with `pdfminer.six`. Everything else in `pdfplumber` places the origin in the __top-left__ corner. In particular, bounding boxes are expressed as `(x0, top, x1, bottom)` — *not* `(x0, y0, x1, y1)` — which is what `.crop(...)`, `.within_bbox(...)`, and the visual-debugging methods expect.
-
-The top-left origin was chosen because ([#198](https://github.com/jsvine/pdfplumber/issues/198)) people generally read PDFs from the top-left toward the bottom-right, and because most adjacent layout systems (SVG, Canvas, PIL/Pillow, which `pdfplumber` itself uses for visual debugging) also put the origin in the top-left.
-
-For a page whose `MediaBox` begins at the origin — the typical case — the two systems convert simply:
-
-```python
-top == page.height - y1
-bottom == page.height - y0
-```
-
-If the `MediaBox` does not begin at `(0, 0)`, both conversions are shifted by its vertical offset, `page.mediabox[1]`.
-
-Not every object carries both varieties. Objects parsed directly from the PDF — `char`, `line`, `rect`, `curve`, `image`, `annot`, and `hyperlink` — have all of the properties above. Objects that `pdfplumber` computes for you use only the top-down properties: the dicts returned by `.extract_words(...)` provide `top`, `bottom`, and `doctop` but no `y0`/`y1`, and those returned by `.search(...)` provide `top` and `bottom`. Relatedly, a `line`'s or `curve`'s `pts` are `(x, top)` tuples.
-
 #### `char` properties
 
 | Property | Description |
@@ -308,6 +283,31 @@ Additionally, both `pdfplumber.PDF` and `pdfplumber.Page` provide access to seve
 
 If you pass the `pdfminer.six`-handling `laparams` parameter to `pdfplumber.open(...)`, then each page's `.objects` dictionary will also contain `pdfminer.six`'s higher-level layout objects, such as `"textboxhorizontal"`.
 
+
+### Coordinates
+
+`pdfplumber` uses `top` and `bottom` for vertical coordinates, increasing downward from the top of the page. It also retains the original `y0` and `y1` properties, which increase upward from the bottom of the page.
+
+| Property | Measured from | Direction |
+|----------|---------------|-----------|
+|`y0`, `y1`| Bottom of the page | Upward |
+|`top`, `bottom`| Top of the page | Downward |
+|`doctop`| Top of the *document* | Downward |
+
+Bounding boxes use `(x0, top, x1, bottom)`, as expected by `.crop(...)`, `.within_bbox(...)`, and the visual-debugging methods. The top-left origin follows typical reading order and the convention used by SVG, Canvas, and PIL/Pillow ([#198](https://github.com/jsvine/pdfplumber/issues/198)).
+
+For objects on an original, **uncropped** page whose `MediaBox` begins at `(0, 0)`, the conversions are:
+
+```python
+top = page.height - y1
+bottom = page.height - y0
+```
+
+For an original page with a nonzero `MediaBox` origin, add `page.mediabox[1]` to both expressions.
+
+Cropping keeps the original page coordinate system; it does not move the origin to the crop's corner. A cropped page has a different `.height`, and objects intersecting its boundary can have clipped `top` and `bottom` values while retaining their original `y0` and `y1`. Use the cropped objects' `top` and `bottom` directly rather than applying the formulas above to the cropped page.
+
+Objects parsed from the PDF carry the coordinate properties listed in their tables above. The dictionaries returned by `.extract_words(...)` provide `top`, `bottom`, and `doctop` but no `y0`/`y1`; `.search(...)` results provide `top` and `bottom`. A line's or curve's `pts` are `(x, top)` tuples.
 
 ## Visual debugging
 
